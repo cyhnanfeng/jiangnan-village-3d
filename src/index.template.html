@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>江南古村 · 3D 村落生成器</title>
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div id="vignette"></div>
+<div id="grain"></div>
+
+<!-- 左上：题名 -->
+<header id="title">
+  <div class="seal-title">
+    <span>江</span><span>南</span><span>古</span><span>村</span>
+  </div>
+  <div class="sub">水 墨 三 维 · 一 键 造 村</div>
+  <div class="name" id="villageName">烟雨村</div>
+  <div class="style" id="styleName">一河两街 · 夏·浓荫 · 晨雾</div>
+</header>
+
+<!-- 左中：印章（生成） -->
+<button id="seal" title="再生成一座（R）">
+  <span>生</span><span>成</span>
+</button>
+
+<!-- 右侧：图志 -->
+<aside id="side">
+  <div class="side-head">
+    <h2>村 落 图 志</h2>
+    <span class="badge" id="badge">八规皆合</span>
+  </div>
+  <div id="stats" class="stats"></div>
+  <div class="side-sub">
+    <button id="btnChecks" class="link">八条规约 ▽</button>
+  </div>
+  <ul id="checks" class="checks"></ul>
+  <div class="side-foot">
+    <button id="btnTop">俯瞰</button>
+    <button id="btnEye">入村</button>
+    <button id="btnLight">换时辰</button>
+    <button id="btnSave">存图</button>
+  </div>
+</aside>
+
+<!-- 建筑信息卡 -->
+<div id="infoCard">
+  <button id="infoClose">×</button>
+  <div class="ic-title"></div>
+  <div class="ic-sub"></div>
+  <div class="ic-body"></div>
+</div>
+
+<!-- 底部：提示 -->
+<div id="tip">拖拽旋转 · 滚轮远近 · 空格转视角 · R 重掷</div>
+<div id="toast"></div>
+
+<!-- 生成中 -->
+<div id="loading">
+  <div class="ld-box">
+    <div class="ld-ring"><i></i><i></i><i></i></div>
+    <div class="ld-text" id="ldText">正在相地</div>
+    <div class="ld-tip" id="ldTip">勘定山水……</div>
+    <div class="ld-bar"><div id="bar"></div></div>
+  </div>
+</div>
+
+<script>/*__THREE__*/</script>
+<script>/*__APP__*/</script>
+</body>
+</html>

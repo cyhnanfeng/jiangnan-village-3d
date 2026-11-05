@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# 无头 Chrome 调试产物
+tools/shots/
+tools/_out/

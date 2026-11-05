@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>模型预览</title>
+<style>
+  html,body{margin:0;height:100%;background:#cfd8d6;overflow:hidden;font-family:system-ui,"Microsoft YaHei",sans-serif}
+  #hud{position:fixed;left:10px;top:8px;font-size:13px;color:#243;background:rgba(255,255,255,.7);padding:4px 8px;border-radius:4px;z-index:5;white-space:pre}
+  #err{position:fixed;left:10px;bottom:10px;color:#a11;font-size:12px;z-index:6;white-space:pre-wrap;max-width:90vw}
+</style>
+</head>
+<body>
+<div id="hud"></div>
+<div id="err"></div>
+<script src="../three.min.js"></script>
+<script src="../src/00-utils.js"></script>
+<script src="../src/05-kit.js"></script>
+<script>/*__MODELS__*/</script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var names = (q.get('m') || '_smoke').split(',');
+  var seed = +(q.get('seed') || 1234);
+  var cols = +(q.get('cols') || Math.ceil(Math.sqrt(names.length)));
+  var W = window.innerWidth, H = window.innerHeight;
+
+  var renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1);
+  renderer.setSize(W, H);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.setScissorTest(true);
+  document.body.appendChild(renderer.domElement);
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xd6dedb);
+  var hemi = new THREE.HemisphereLight(0xdfeefb, 0x6b6a5a, 1.15);
+  scene.add(hemi);
+  var sun = new THREE.DirectionalLight(0xfff2dd, 2.0);
+  sun.position.set(18, 28, 14);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  var sc = sun.shadow.camera;
+  sc.left = -40; sc.right = 40; sc.top = 40; sc.bottom = -40; sc.near = 1; sc.far = 120;
+  scene.add(sun);
+  var ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0xb9c3b5, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.01;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  var hud = document.getElementById('hud');
+  var info = [];
+  function log(s) { info.push(s); hud.textContent = info.join('\n'); }
+  function fail(s) { document.getElementById('err').textContent += s + '\n'; }
+
+  var roots = [];
+  if (q.get('species')) window.__species = q.get('species');
+  names.forEach(function (n, idx) {
+    var f = JN.models[n];
+    if (!f) { fail('缺少模型: ' + n); return; }
+    var ctx = JN.kit.makeCtx(seed + JN.hashString(n) % 9999);
+    var extra = {};
+    if (q.get('species')) extra.species = q.get('species');
+    if (q.get('type')) extra.type = q.get('type');
+    if (q.get('crop')) extra.crop = q.get('crop');
+    if (q.get('w')) { extra.w = +q.get('w'); extra.d = +(q.get('d') || q.get('w')); }
+    ctx.opts = extra;
+    try {
+      var root = f(ctx);
+      root.position.x = idx * 15; root.position.z = 0;
+      scene.add(root);
+      var box = new THREE.Box3().setFromObject(root);
+      var size = box.getSize(new THREE.Vector3());
+      var tris = 0, meshes = 0, mats = new Set();
+      root.traverse(function (o) {
+        if (o.isMesh) {
+          meshes++;
+          var g = o.geometry;
+          tris += g.index ? g.index.count / 3 : g.attributes.position.count / 3;
+          if (o.material) mats.add(o.material.name || o.material.uuid.slice(0, 5));
+        }
+      });
+      log(n + '  ' + size.x.toFixed(1) + '×' + size.y.toFixed(1) + '×' + size.z.toFixed(1) +
+        '  tri=' + Math.round(tris) + ' mesh=' + meshes + ' mat=' + mats.size);
+      roots.push({ root: root, size: size, center: box.getCenter(new THREE.Vector3()), name: n });
+    } catch (e) { fail(n + ' 构建失败: ' + e.message + '\n' + (e.stack || '').split('\n')[1]); }
+  });
+
+  var cam = new THREE.PerspectiveCamera(32, 1, 0.1, 500);
+  function render() {
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, W, H);
+    renderer.clear();
+    renderer.setScissorTest(true);
+    var rows = Math.ceil(roots.length / cols);
+    var cw = W / cols, ch = H / rows;
+    roots.forEach(function (r, i) {
+      var cx = (i % cols) * cw, cy = H - (Math.floor(i / cols) + 1) * ch;
+      renderer.setViewport(cx, cy, cw, ch);
+      renderer.setScissor(cx, cy, cw, ch);
+      var maxDim = Math.max(r.size.x, r.size.y, r.size.z);
+      var dist = maxDim * 1.55 + 2;
+      var az = +(q.get('az') || 35) * Math.PI / 180, el = +(q.get('el') || 26) * Math.PI / 180;
+      cam.position.set(
+        r.center.x + Math.sin(az) * Math.cos(el) * dist,
+        r.center.y + Math.sin(el) * dist,
+        r.center.z + Math.cos(az) * Math.cos(el) * dist
+      );
+      cam.aspect = cw / ch;
+      cam.updateProjectionMatrix();
+      cam.lookAt(r.center);
+      renderer.render(scene, cam);
+    });
+    // 标签
+    var ctx2 = document.createElement('canvas');
+  }
+  render();
+  window.__ready = true;
+})();
+</script>
+</body>
+</html>
